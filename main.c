@@ -31,6 +31,7 @@ vulnEntry* vulnList;
 // DH [File Writable] DLL
 // DH1 [Directory Writable] Load DLL NAMENOTFOUND
 // DH3 [Directory Writable] CreateFile NAMENOTFOUND DLL Loaded
+// File Writable [FW], Directory Writable [DW]
 
 // create entry with num strings
 vulnEntry genEntry(int num, char* s, ...) {
@@ -414,38 +415,59 @@ void parseEvents(xmlNode* root) {
 		// check for bad permissions
 		badFilePermissions(cur_node, elevated, parms);
 
-		// DLL search order hijack, CreateFile : ìName Not Foundî -> Load Image same file OR Load Image : ìName Not Foundî OR DLL is writable
+		// DLL search order hijack, CreateFile : ‚ÄúName Not Found‚Äù -> Load Image same file OR Load Image : ‚ÄúName Not Found‚Äù OR DLL is writable
 		dllHijack(cur_node, elevated, parms);
 
 		// TODO: implement a exclude list, will only work with exact length entries unless need filter function most will be length 3 anyways
 	}
 
 }
-void printVulnEntry(vulnEntry ent) {
+
+int toStringVulnEntry(char* str, vulnEntry ent) {
 	// BP [File Writable] Bad Permission Read
 	// DH [File Writable] DLL
 	// DH1 [Directory Writable] Load DLL NAMENOTFOUND
 	// DH3 [Directory Writable] CreateFile NAMENOTFOUND DLL Loaded
-	for (int s = 0; s < sb_count(ent); s++) {
-		printf("%s ", ent[s]);
+	if (str == NULL) { return 1; }
+
+	// clear string
+	strcpy_s(str,PROPSIZE, "");
+	if (strcmp(ent[0],"BP") == 0) {
+		strcat_s(str, PROPSIZE, "Bad Permission Read [FW] ");
+	} else if (strcmp(ent[0],"DH") == 0) {
+		strcat_s(str, PROPSIZE, "DLL Hijack [FW] ");
+	} else if (strcmp(ent[0],"DH1") == 0) {
+		strcat_s(str, PROPSIZE, "Load DLL NAMENOTFOUND [DW] ");
+	} else if (strcmp(ent[0],"DH3") == 0) {
+		strcat_s(str, PROPSIZE, "CreateFile NAMENOTFOUND DLL Loaded [DW] ");
+	} else if (strcmp(ent[0],"DH2") == 0) {
+		strcat_s(str, PROPSIZE, "DH3 Helper");
 	}
-	printf("\n");
+
+	for (int s = 1; s < sb_count(ent); s++) {
+		strcat_s(str, PROPSIZE, ent[s]);
+		strcat_s(str, PROPSIZE, " ");
+	}
+	return 0;
 }
 
 void printVulnList() {
+	char* buff = malloc(sizeof(char) * PROPSIZE);
 	for (int x = 0; x < sb_count(vulnList); x++) {
 		if (strcmp(vulnList[x][0], "DH2") != 0) {
-			printVulnEntry(vulnList[x]);
+			toStringVulnEntry(buff,vulnList[x]);
+			printf("%s\n", buff);
 		}
 	}
+	//free(buff);
 }
 
 int main(int argc, char **argv) 
 {
 	xmlDoc *doc = NULL;
 	xmlNode *root = NULL;
-	//char* logPath = argv[1];
-	char* logPath = "C:\\Users\\Sam\\load.XML";
+	char* logPath = argv[1];
+	//char* logPath = "C:\\Users\\Sam\\Logfile.XML";
 
 	LIBXML_TEST_VERSION // check API and match with DLL's
 
